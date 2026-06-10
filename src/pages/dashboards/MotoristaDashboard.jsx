@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryService } from '../../services/deliveryService';
+import { Link } from 'react-router-dom';
 
 const STATUS_STYLE = {
   EM_TRANSITO: { label: 'Em Trânsito', bg: 'bg-blue-500/10',   text: 'text-blue-400',   dot: 'bg-blue-400'   },
@@ -184,6 +185,21 @@ export default function MotoristaDashboard() {
             Olá, {user?.nome?.split(' ')[0]} 👋
           </h1>
           <p className="text-gray-400 mt-1">Aqui estão suas entregas de hoje.</p>
+        </div>
+        
+        {/* Botão Nova Entrega */}
+        <div className="flex justify-end mb-6 -mt-4">
+          <Link
+            to="/motorista/nova-entrega"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-500
+               text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+  >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 4v16m8-8H4" />
+            </svg>
+            Nova Entrega
+          </Link>
         </div>
 
         {/* Cards de métricas */}

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
+import NovaEntrega from './pages/motorista/NovaEntrega';
+import Acompanhamento from './pages/gestor/Acompanhamento';
 
 // Importando as páginas reais
 import Login    from './pages/Login';
@@ -36,9 +38,21 @@ function AppRoutes() {
         </PrivateRoute>
       }/>
 
+      <Route path="/gestor/acompanhamento" element={
+        <PrivateRoute roles={['GESTOR_LOGISTICA']}>
+          <Acompanhamento />
+        </PrivateRoute>
+      }/>
+
       <Route path="/dashboard/motorista" element={
         <PrivateRoute roles={['MOTORISTA']}>
           <MotoristaDashboard />
+        </PrivateRoute>
+      }/>
+
+      <Route path="/motorista/nova-entrega" element={
+        <PrivateRoute roles={['MOTORISTA']}>
+          <NovaEntrega />
         </PrivateRoute>
       }/>
 

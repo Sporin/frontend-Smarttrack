@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { deliveryService } from '../../services/deliveryService';
 import { driverService } from '../../services/driverService';
 import { notificationService } from '../../services/notificationService';
+import { Link } from 'react-router-dom';
 
 // Mapa de cores por status
 const STATUS_STYLE = {
@@ -169,6 +170,18 @@ export default function GestorDashboard() {
           <p className="text-gray-400 mt-1">
             Aqui está o resumo das operações de hoje.
           </p>
+        </div>
+
+        {/* Botão Acompanhamento */}
+        <div className="flex justify-end mb-6 -mt-4">
+          <Link
+            to="/gestor/acompanhamento"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500
+               text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+  >
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            Acompanhamento em Tempo Real
+          </Link>
         </div>
 
         {/* Cards de métricas */}
