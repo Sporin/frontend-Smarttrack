@@ -2,7 +2,9 @@
 import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
-const api = createApi(process.env.REACT_APP_DRIVER_URL);
+
+// 👇 HARD CODE - URL completa com context-path
+const api = createApi('http://localhost:8082/driver-service');
 
 const MOCK_MOTORISTAS = [
   { id: 1, nome: 'Bruno Silva',  cnh: '12345678900', status: 'DISPONIVEL',  veiculo: 'Caminhão VW 24.280' },
@@ -11,7 +13,6 @@ const MOCK_MOTORISTAS = [
 ];
 
 export const driverService = {
-  // GET /drivers
   async listarMotoristas() {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 400));
@@ -21,7 +22,6 @@ export const driverService = {
     return response.data;
   },
 
-  // GET /drivers/{id}
   async buscarMotorista(id) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 300));
@@ -31,7 +31,6 @@ export const driverService = {
     return response.data;
   },
 
-  // POST /drivers
   async criarMotorista(dados) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 500));
@@ -41,17 +40,15 @@ export const driverService = {
     return response.data;
   },
 
-  // PUT /drivers/atualizar/{id}
   async atualizarMotorista(id, dados) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 400));
       return { id, ...dados };
     }
-    const response = await api.put(`/drivers/atualizar/${id}`, dados);
+    const response = await api.put(`/drivers/${id}`, dados);
     return response.data;
   },
 
-  // DELETE /drivers/{id}
   async deletarMotorista(id) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 300));

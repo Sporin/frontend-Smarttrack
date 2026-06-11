@@ -2,7 +2,7 @@
 import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
-const api = createApi(process.env.REACT_APP_DELIVERY_URL);
+const api = createApi('http://localhost:8081/delivery-service');
 
 const MOCK_ENTREGAS = [
   { id: 1, origem: 'São Paulo - SP',     destino: 'Campinas - SP',  status: 'EM_TRANSITO', motorista: 'Bruno',  data: '2025-06-01' },

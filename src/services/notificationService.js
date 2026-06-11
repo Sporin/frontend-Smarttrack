@@ -2,7 +2,7 @@
 import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
-const api = createApi(process.env.REACT_APP_NOTIFICATION_URL);
+const api = createApi('http://localhost:8084/notification-service');
 
 const MOCK_NOTIFICACOES = [
   { id: 1, mensagem: 'Entrega #1 saiu para entrega',    lida: false, data: '2025-06-01 08:30' },

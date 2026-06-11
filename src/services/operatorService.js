@@ -2,7 +2,7 @@
 import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
-const api = createApi(process.env.REACT_APP_OPERATOR_URL);
+const api = createApi('http://localhost:8083/operator-service');
 
 export const operatorService = {
   // GET /operators
