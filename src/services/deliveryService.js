@@ -5,13 +5,12 @@ const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
 const api = createApi('http://localhost:8081/delivery-service');
 
 const MOCK_ENTREGAS = [
-  { id: 1, origem: 'São Paulo - SP',     destino: 'Campinas - SP',  status: 'EM_TRANSITO', motorista: 'Bruno',  data: '2025-06-01' },
-  { id: 2, origem: 'Rio de Janeiro - RJ', destino: 'Niterói - RJ', status: 'PENDENTE',     motorista: 'Carlos', data: '2025-06-02' },
-  { id: 3, origem: 'Curitiba - PR',      destino: 'Londrina - PR',  status: 'ENTREGUE',    motorista: 'Diego',  data: '2025-05-30' },
+  { id: 1, status: 'EM_TRANSITO', motoristaId: 2, operadorId: 3, dataEnvio: '2025-06-01' },
+  { id: 2, status: 'PENDENTE',    motoristaId: 2, operadorId: 3, dataEnvio: '2025-06-02' },
+  { id: 3, status: 'ENTREGUE',    motoristaId: 2, operadorId: 3, dataEnvio: '2025-05-30' },
 ];
 
 export const deliveryService = {
-  // GET /deliveries
   async listarEntregas() {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 400));
@@ -21,7 +20,6 @@ export const deliveryService = {
     return response.data;
   },
 
-  // GET /deliveries/{id}
   async buscarEntrega(id) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 300));
@@ -31,7 +29,6 @@ export const deliveryService = {
     return response.data;
   },
 
-  // GET /deliveries/motorista/{motoristaId}
   async listarPorMotorista(motoristaId) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 400));
@@ -42,7 +39,7 @@ export const deliveryService = {
   },
 
   // POST /deliveries
-  // dto esperado: { origem, destino, motoristaId, ... }
+  // dto esperado: { motoristaId, operadorId, dataEnvio }
   async criarEntrega(dados) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 500));
@@ -52,8 +49,6 @@ export const deliveryService = {
     return response.data;
   },
 
-  // PUT /deliveries/{id}/status
-  // dto esperado: { status: 'EM_TRANSITO' }
   async atualizarStatus(id, status) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 300));

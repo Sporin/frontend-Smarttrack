@@ -5,15 +5,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { deliveryService } from '../../services/deliveryService';
 
 export default function NovaEntrega() {
-  const navigate    = useNavigate();
-  const { user }    = useAuth();
+  const navigate  = useNavigate();
+  const { user }  = useAuth();
 
-  // Campos do formulário
-  const [origem,   setOrigem]   = useState('');
-  const [destino,  setDestino]  = useState('');
-  const [dataEnvio, setDataEnvio] = useState('');
+  const [operadorId, setOperadorId] = useState('');
+  const [dataEnvio,  setDataEnvio]  = useState('');
 
-  // Controle
   const [erro,       setErro]       = useState('');
   const [sucesso,    setSucesso]    = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -23,13 +20,12 @@ export default function NovaEntrega() {
     setErro('');
     setSucesso(false);
 
-    // Validações
-    if (!origem || !destino) {
-      setErro('Origem e destino são obrigatórios.');
+    if (!operadorId) {
+      setErro('Informe o ID do operador responsável.');
       return;
     }
-    if (origem.trim() === destino.trim()) {
-      setErro('Origem e destino não podem ser iguais.');
+    if (isNaN(Number(operadorId)) || Number(operadorId) <= 0) {
+      setErro('ID do operador inválido.');
       return;
     }
 
@@ -37,16 +33,12 @@ export default function NovaEntrega() {
       setCarregando(true);
 
       await deliveryService.criarEntrega({
-        origem,
-        destino,
-        data: dataEnvio || new Date().toISOString().split('T')[0],
-        motorista: user?.nome,
-        status: 'PENDENTE',
+        motoristaId: user?.id,
+        operadorId:  Number(operadorId),
+        dataEnvio:   dataEnvio || new Date().toISOString().split('T')[0],
       });
 
       setSucesso(true);
-
-      // Volta para o dashboard após 2 segundos
       setTimeout(() => navigate('/dashboard/motorista'), 2000);
 
     } catch (err) {
@@ -63,14 +55,9 @@ export default function NovaEntrega() {
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Botão voltar */}
-            <Link
-              to="/dashboard/motorista"
-              className="text-gray-400 hover:text-white transition"
-            >
+            <Link to="/dashboard/motorista" className="text-gray-400 hover:text-white transition">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M15 19l-7-7 7-7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
             <div>
@@ -86,16 +73,13 @@ export default function NovaEntrega() {
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-2xl">
 
-          {/* Cabeçalho */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-white">Registrar Nova Entrega</h1>
             <p className="text-gray-400 mt-1">Preencha os dados da entrega que será realizada.</p>
           </div>
 
-          {/* Card do formulário */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
 
-            {/* Mensagem de sucesso */}
             {sucesso && (
               <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3">
                 <p className="text-green-400 text-sm">
@@ -106,64 +90,24 @@ export default function NovaEntrega() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* Origem e Destino lado a lado em telas grandes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                {/* Origem */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Origem <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                      <span className="w-2 h-2 rounded-full bg-blue-400 block"></span>
-                    </span>
-                    <input
-                      type="text"
-                      value={origem}
-                      onChange={(e) => setOrigem(e.target.value)}
-                      placeholder="Ex: São Paulo - SP"
-                      disabled={carregando}
-                      className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
-                                 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:border-blue-500
-                                 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Destino */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Destino <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                      <span className="w-2 h-2 rounded-full bg-green-400 block"></span>
-                    </span>
-                    <input
-                      type="text"
-                      value={destino}
-                      onChange={(e) => setDestino(e.target.value)}
-                      placeholder="Ex: Campinas - SP"
-                      disabled={carregando}
-                      className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
-                                 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:border-blue-500
-                                 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Seta visual entre origem e destino */}
-              <div className="hidden md:flex items-center justify-center -mt-2">
-                <div className="flex items-center gap-2 text-gray-600 text-xs">
-                  <div className="w-16 h-px bg-gray-700"></div>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                  <div className="w-16 h-px bg-gray-700"></div>
-                </div>
+              {/* ID do Operador */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  ID do Operador <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={operadorId}
+                  onChange={(e) => setOperadorId(e.target.value)}
+                  placeholder="Ex: 2"
+                  disabled={carregando}
+                  className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500
+                             rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500
+                             focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50"
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Operadores disponíveis no banco: ID 2 (breno) ou ID 3 (bruno-10)
+                </p>
               </div>
 
               {/* Data de envio */}
@@ -184,28 +128,26 @@ export default function NovaEntrega() {
                 />
               </div>
 
-              {/* Informação do motorista */}
+              {/* Info do motorista */}
               <div className="bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3">
                 <p className="text-gray-400 text-sm">
                   👤 Motorista responsável:{' '}
                   <span className="text-white font-medium">{user?.nome}</span>
+                  <span className="text-gray-500 ml-2">(ID: {user?.id})</span>
                 </p>
               </div>
 
-              {/* Mensagem de erro */}
               {erro && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
                   <p className="text-red-400 text-sm">{erro}</p>
                 </div>
               )}
 
-              {/* Botões */}
               <div className="flex gap-3 pt-2">
                 <Link
                   to="/dashboard/motorista"
                   className="flex-1 px-4 py-3 rounded-lg border border-gray-700
-                             text-gray-300 hover:bg-gray-800 transition text-sm
-                             font-medium text-center"
+                             text-gray-300 hover:bg-gray-800 transition text-sm font-medium text-center"
                 >
                   Cancelar
                 </Link>

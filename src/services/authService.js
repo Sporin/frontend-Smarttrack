@@ -3,8 +3,7 @@ import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
 
-// ✅ Corrigido: removido '/driver-service' da URL
-const api = createApi('http://localhost:8082');
+const api = createApi('http://localhost:8082/driver-service');
 
 const MOCK_USERS = [
   { id: 1, nome: 'Ana Gestora',     email: 'gestor@puc.com',    senha: '123456', role: 'GESTOR'    },
