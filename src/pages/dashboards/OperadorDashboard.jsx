@@ -6,10 +6,6 @@ import { deliveryService } from "../../services/deliveryService";
 import { driverService } from "../../services/driverService";
 import { notificationService } from "../../services/notificationService";
 
-// ─────────────────────────────────────────
-// Helpers visuais
-// ─────────────────────────────────────────
-
 function badgeStatus(status) {
   const map = {
     PENDENTE:    "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
@@ -20,58 +16,41 @@ function badgeStatus(status) {
   return map[status] || "bg-gray-500/20 text-gray-400 border border-gray-500/30";
 }
 
-function badgeMotorista(status) {
-  const map = {
-    DISPONIVEL:   "bg-green-500/20 text-green-400 border border-green-500/30",
-    EM_ROTA:      "bg-blue-500/20 text-blue-400 border border-blue-500/30",
-    INDISPONIVEL: "bg-red-500/20 text-red-400 border border-red-500/30",
-  };
-  return map[status] || "bg-gray-500/20 text-gray-400 border border-gray-500/30";
-}
-
-// ─────────────────────────────────────────
-// Componente principal
-// ─────────────────────────────────────────
-
 export default function OperadorDashboard() {
   const { user, logout } = useAuth();
 
-  // ── Estados de dados ──
   const [entregas, setEntregas]         = useState([]);
   const [motoristas, setMotoristas]     = useState([]);
+  const [motoristaId, setMotoristaId] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
   const [carregando, setCarregando]     = useState(true);
 
-  // ── Estados do formulário ──
-  const [novaEntrega, setNovaEntrega] = useState({
-    origem: "",
-    destino: "",
-    motorista: "",
-  });
-  const [enviando, setEnviando] = useState(false);
-  const [sucesso, setSucesso]   = useState(false);
-  const [erroForm, setErroForm] = useState("");
+  const [dataEnvio, setDataEnvio] = useState('');
+  const [enviando, setEnviando]   = useState(false);
+  const [sucesso, setSucesso]     = useState(false);
+  const [erroForm, setErroForm]   = useState('');
 
-  // ── Filtro da tabela ──
-  const [filtroStatus, setFiltroStatus] = useState("TODOS");
+  const [filtroStatus, setFiltroStatus] = useState('TODOS');
 
-  // ─────────────────────────────────────────
-  // Carregamento inicial
-  // ─────────────────────────────────────────
   useEffect(() => {
     async function carregarDados() {
       try {
-        const [resEntregas, resMotoristas, resNotif] = await Promise.all([
+        const [resEntregas, resMotoristas] = await Promise.all([
           deliveryService.listarEntregas(),
           driverService.listarMotoristas(),
-          notificationService.listarNotificacoes(),
         ]);
         setEntregas(resEntregas);
         setMotoristas(resMotoristas);
-        // Mostra só as não lidas nas notificações
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+      }
+
+      // Notificações separadas para não bloquear o resto
+      try {
+        const resNotif = await notificationService.listarNotificacoes();
         setNotificacoes(resNotif.filter((n) => !n.lida));
       } catch (err) {
-        console.error("Erro ao carregar dados:", err);
+        console.error('Erro ao carregar notificações:', err);
       } finally {
         setCarregando(false);
       }
@@ -79,33 +58,30 @@ export default function OperadorDashboard() {
     carregarDados();
   }, []);
 
-  // ─────────────────────────────────────────
-  // Ações
-  // ─────────────────────────────────────────
-
-  function handleCampo(e) {
-    setNovaEntrega({ ...novaEntrega, [e.target.name]: e.target.value });
-  }
-
   async function handleCriarEntrega(e) {
     e.preventDefault();
-    setErroForm("");
+    setErroForm('');
     setSucesso(false);
 
-    if (!novaEntrega.origem || !novaEntrega.destino || !novaEntrega.motorista) {
-      setErroForm("Preencha todos os campos obrigatórios.");
+    if (!motoristaId) {
+      setErroForm('Selecione um motorista.');
       return;
     }
 
     try {
       setEnviando(true);
-      const criada = await deliveryService.criarEntrega(novaEntrega);
+      const criada = await deliveryService.criarEntrega({
+        motoristaId: Number(motoristaId),
+        operadorId: user?.id,
+        dataEnvio: dataEnvio || new Date().toISOString().split('T')[0],
+      });
       setEntregas((prev) => [criada, ...prev]);
-      setNovaEntrega({ origem: "", destino: "", motorista: "" });
+      setMotoristaId('');
+      setDataEnvio('');
       setSucesso(true);
       setTimeout(() => setSucesso(false), 3000);
     } catch (err) {
-      setErroForm("Erro ao cadastrar entrega. Tente novamente.");
+      setErroForm('Erro ao cadastrar entrega. Tente novamente.');
     } finally {
       setEnviando(false);
     }
@@ -116,26 +92,20 @@ export default function OperadorDashboard() {
       await notificationService.marcarComoLida(id);
       setNotificacoes((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
-      console.error("Erro ao marcar notificação:", err);
+      console.error('Erro ao marcar notificação:', err);
     }
   }
 
-  // ─────────────────────────────────────────
-  // Dados derivados
-  // ─────────────────────────────────────────
   const entregasFiltradas =
-    filtroStatus === "TODOS"
+    filtroStatus === 'TODOS'
       ? entregas
       : entregas.filter((e) => e.status === filtroStatus);
 
-  const totalEntregas    = entregas.length;
-  const entregues        = entregas.filter((e) => e.status === "ENTREGUE").length;
-  const emTransito       = entregas.filter((e) => e.status === "EM_TRANSITO").length;
-  const motoristasLivres = motoristas.filter((m) => m.status === "DISPONIVEL").length;
+  const totalEntregas = entregas.length;
+  const entregues     = entregas.filter((e) => e.status === 'ENTREGUE').length;
+  const emTransito    = entregas.filter((e) => e.status === 'EM_TRANSITO').length;
+  const pendentes     = entregas.filter((e) => e.status === 'PENDENTE').length;
 
-  // ─────────────────────────────────────────
-  // Tela de carregamento
-  // ─────────────────────────────────────────
   if (carregando) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -144,39 +114,31 @@ export default function OperadorDashboard() {
     );
   }
 
-  // ─────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Painel do Operador</h1>
-          <p className="text-sm text-gray-400">Bem-vindo, {user?.nome || "Operador"}</p>
+          <p className="text-sm text-gray-400">Bem-vindo, {user?.nome || 'Operador'}</p>
         </div>
-        <button
-          onClick={logout}
-          className="text-sm text-gray-400 hover:text-red-400 transition-colors"
-        >
+        <button onClick={logout} className="text-sm text-gray-400 hover:text-red-400 transition-colors">
           Sair
         </button>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
 
-        {/* ══════════════════════════════════════
-            SEÇÃO 1 — MÉTRICAS
-        ══════════════════════════════════════ */}
+        {/* SEÇÃO 1 — MÉTRICAS */}
         <section>
           <h2 className="text-lg font-semibold text-gray-200 mb-4">Visão Geral</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Total de Entregas",  valor: totalEntregas,    cor: "text-white" },
-              { label: "Entregues",          valor: entregues,        cor: "text-green-400" },
-              { label: "Em Trânsito",        valor: emTransito,       cor: "text-blue-400" },
-              { label: "Motoristas Livres",  valor: motoristasLivres, cor: "text-yellow-400" },
+              { label: 'Total de Entregas', valor: totalEntregas, cor: 'text-white'        },
+              { label: 'Entregues',         valor: entregues,     cor: 'text-green-400'    },
+              { label: 'Em Trânsito',       valor: emTransito,    cor: 'text-blue-400'     },
+              { label: 'Pendentes',         valor: pendentes,     cor: 'text-yellow-400'   },
             ].map((card) => (
               <div key={card.label} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <p className="text-sm text-gray-400">{card.label}</p>
@@ -186,16 +148,14 @@ export default function OperadorDashboard() {
           </div>
         </section>
 
-        {/* ══════════════════════════════════════
-            SEÇÃO 2 — CADASTRAR ENTREGA
-        ══════════════════════════════════════ */}
+        {/* SEÇÃO 2 — CADASTRAR ENTREGA */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Cadastrar Nova Entrega</h2>
+          <h2 className="text-lg font-semibold text-gray-200 mb-4">Publicar Nova Entrega</h2>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
 
             {sucesso && (
               <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-sm">
-                ✅ Entrega cadastrada com sucesso!
+                ✅ Entrega publicada com sucesso!
               </div>
             )}
             {erroForm && (
@@ -204,76 +164,59 @@ export default function OperadorDashboard() {
               </div>
             )}
 
-            <form onSubmit={handleCriarEntrega} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleCriarEntrega} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 
-              {/* Origem */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-400">
-                  Origem <span className="text-red-400">*</span>
-                </label>
-                <input
-                  name="origem"
-                  value={novaEntrega.origem}
-                  onChange={handleCampo}
-                  placeholder="Ex: São Paulo - SP"
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Destino */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-400">
-                  Destino <span className="text-red-400">*</span>
-                </label>
-                <input
-                  name="destino"
-                  value={novaEntrega.destino}
-                  onChange={handleCampo}
-                  placeholder="Ex: Campinas - SP"
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Motorista (só os disponíveis) */}
+              {/* Motorista */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-400">
                   Motorista <span className="text-red-400">*</span>
                 </label>
                 <select
-                  name="motorista"
-                  value={novaEntrega.motorista}
-                  onChange={handleCampo}
+                  value={motoristaId}
+                  onChange={(e) => setMotoristaId(e.target.value)}
+                  disabled={enviando}
                   className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Selecione um motorista</option>
-                  {motoristas
-                    .filter((m) => m.status === "DISPONIVEL")
-                    .map((m) => (
-                      <option key={m.id} value={m.nome}>
-                        {m.nome} — {m.veiculo}
-                      </option>
-                    ))}
+                  {motoristas.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome} — {m.veiculo}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Botão ocupa as 3 colunas */}
-              <div className="md:col-span-3">
-                <button
-                  type="submit"
+              {/* Data de envio */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-400">
+                  Data de envio
+                  <span className="text-gray-500 font-normal ml-1">(opcional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={dataEnvio}
+                  onChange={(e) => setDataEnvio(e.target.value)}
                   disabled={enviando}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
-                >
-                  {enviando ? "Cadastrando..." : "Cadastrar Entrega"}
-                </button>
+                  className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white
+                            focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+                />
               </div>
+
+              {/* Botão */}
+              <button
+                type="submit"
+                disabled={enviando}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold
+                          py-2 px-6 rounded-lg transition-colors text-sm"
+              >
+                {enviando ? 'Publicando...' : 'Publicar Entrega'}
+              </button>
 
             </form>
           </div>
         </section>
 
-        {/* ══════════════════════════════════════
-            SEÇÃO 3 — RELATÓRIO DE ENTREGAS
-        ══════════════════════════════════════ */}
+        {/* SEÇÃO 3 — RELATÓRIO DE ENTREGAS */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-200">Relatório de Entregas</h2>
@@ -295,9 +238,9 @@ export default function OperadorDashboard() {
               <thead>
                 <tr className="border-b border-gray-800 text-gray-400 text-left">
                   <th className="px-4 py-3 font-medium">ID</th>
-                  <th className="px-4 py-3 font-medium">Origem</th>
-                  <th className="px-4 py-3 font-medium hidden md:table-cell">Destino</th>
-                  <th className="px-4 py-3 font-medium hidden md:table-cell">Motorista</th>
+                  <th className="px-4 py-3 font-medium">Data Envio</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Data Entrega</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Motorista ID</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -315,9 +258,11 @@ export default function OperadorDashboard() {
                       className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
                     >
                       <td className="px-4 py-3 text-gray-400">#{entrega.id}</td>
-                      <td className="px-4 py-3 text-white font-medium">{entrega.origem}</td>
-                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.destino}</td>
-                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.motorista}</td>
+                      <td className="px-4 py-3 text-white">{entrega.dataEnvio || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.dataEntrega || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
+                        {entrega.motoristaId ? `#${entrega.motoristaId}` : 'Sem motorista'}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeStatus(entrega.status)}`}>
                           {entrega.status}
@@ -331,38 +276,25 @@ export default function OperadorDashboard() {
           </div>
         </section>
 
-        {/* ══════════════════════════════════════
-            SEÇÃO 4 — MOTORISTAS
-        ══════════════════════════════════════ */}
+        {/* SEÇÃO 4 — MOTORISTAS */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Motoristas</h2>
+          <h2 className="text-lg font-semibold text-gray-200 mb-4">Motoristas Cadastrados</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {motoristas.length === 0 ? (
               <p className="text-gray-500 col-span-3">Nenhum motorista encontrado.</p>
             ) : (
               motoristas.map((m) => (
-                <div
-                  key={m.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-white">{m.nome}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badgeMotorista(m.status)}`}>
-                      {m.status === "DISPONIVEL"   ? "Disponível"   :
-                       m.status === "EM_ROTA"      ? "Em Rota"      : "Indisponível"}
-                    </span>
-                  </div>
+                <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                  <p className="font-semibold text-white">{m.nome}</p>
                   <p className="text-sm text-gray-400">🚚 {m.veiculo}</p>
-                  <p className="text-sm text-gray-400">🪪 CNH: {m.cnh}</p>
+                  <p className="text-sm text-gray-500">ID: {m.id}</p>
                 </div>
               ))
             )}
           </div>
         </section>
 
-        {/* ══════════════════════════════════════
-            SEÇÃO 5 — NOTIFICAÇÕES
-        ══════════════════════════════════════ */}
+        {/* SEÇÃO 5 — NOTIFICAÇÕES */}
         <section>
           <h2 className="text-lg font-semibold text-gray-200 mb-4">
             Notificações
@@ -380,13 +312,10 @@ export default function OperadorDashboard() {
           ) : (
             <div className="space-y-3">
               {notificacoes.map((n) => (
-                <div
-                  key={n.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4 flex items-start justify-between gap-4"
-                >
+                <div key={n.id} className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm text-white">{n.mensagem}</p>
-                    <p className="text-xs text-gray-500 mt-1">{n.data}</p>
+                    <p className="text-xs text-gray-500 mt-1">{n.dataEnvio}</p>
                   </div>
                   <button
                     onClick={() => handleMarcarLida(n.id)}

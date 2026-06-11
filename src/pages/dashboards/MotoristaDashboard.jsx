@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { deliveryService } from '../../services/deliveryService';
-import { Link } from 'react-router-dom';
 
 const STATUS_STYLE = {
   EM_TRANSITO: { label: 'Em Trânsito', bg: 'bg-blue-500/10',   text: 'text-blue-400',   dot: 'bg-blue-400'   },
@@ -20,7 +19,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// Modal de atualização de status
 function ModalStatus({ entrega, onFechar, onAtualizar }) {
   const [novoStatus, setNovoStatus] = useState(entrega.status);
   const [carregando, setCarregando] = useState(false);
@@ -36,7 +34,7 @@ function ModalStatus({ entrega, onFechar, onAtualizar }) {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
         <h3 className="text-white font-semibold text-lg mb-1">Atualizar Status</h3>
-        <p className="text-gray-400 text-sm mb-5">Entrega #{entrega.id} — {entrega.destino}</p>
+        <p className="text-gray-400 text-sm mb-5">Entrega #{entrega.id}</p>
 
         <div className="space-y-2 mb-6">
           {['PENDENTE', 'EM_TRANSITO', 'ENTREGUE'].map((s) => (
@@ -82,32 +80,28 @@ function ModalStatus({ entrega, onFechar, onAtualizar }) {
 export default function MotoristaDashboard() {
   const { user, logout } = useAuth();
 
-  const [entregas,         setEntregas]         = useState([]);
-  const [carregando,       setCarregando]        = useState(true);
-  const [entregaSelecionada, setEntregaSelecionada] = useState(null); // controla o modal
+  const [entregas,           setEntregas]           = useState([]);
+  const [carregando,         setCarregando]          = useState(true);
+  const [entregaSelecionada, setEntregaSelecionada]  = useState(null);
 
   useEffect(() => {
     async function carregarEntregas() {
       try {
-        const dados = await deliveryService.listarEntregas();
-        // Filtra só as entregas do motorista logado
-        const minhasEntregas = dados.filter(
-          (e) => e.motorista.toLowerCase() === user?.nome?.split(' ')[0].toLowerCase()
-        );
-        setEntregas(minhasEntregas.length > 0 ? minhasEntregas : dados);
+        // Busca só as entregas do motorista logado pelo ID
+        const dados = await deliveryService.listarPorMotorista(user?.id);
+        setEntregas(dados);
       } catch (err) {
         console.error('Erro ao carregar entregas:', err);
       } finally {
         setCarregando(false);
       }
     }
-    carregarEntregas();
+    if (user?.id) carregarEntregas();
   }, [user]);
 
   async function handleAtualizarStatus(id, novoStatus) {
     try {
       await deliveryService.atualizarStatus(id, novoStatus);
-      // Atualiza localmente sem precisar recarregar tudo
       setEntregas((prev) =>
         prev.map((e) => (e.id === id ? { ...e, status: novoStatus } : e))
       );
@@ -116,10 +110,9 @@ export default function MotoristaDashboard() {
     }
   }
 
-  // Métricas
-  const pendentes   = entregas.filter(e => e.status === 'PENDENTE').length;
-  const emTransito  = entregas.filter(e => e.status === 'EM_TRANSITO').length;
-  const entregues   = entregas.filter(e => e.status === 'ENTREGUE').length;
+  const pendentes  = entregas.filter(e => e.status === 'PENDENTE').length;
+  const emTransito = entregas.filter(e => e.status === 'EM_TRANSITO').length;
+  const entregues  = entregas.filter(e => e.status === 'ENTREGUE').length;
 
   if (carregando) {
     return (
@@ -184,22 +177,7 @@ export default function MotoristaDashboard() {
           <h1 className="text-2xl font-bold text-white">
             Olá, {user?.nome?.split(' ')[0]} 👋
           </h1>
-          <p className="text-gray-400 mt-1">Aqui estão suas entregas de hoje.</p>
-        </div>
-        
-        {/* Botão Nova Entrega */}
-        <div className="flex justify-end mb-6 -mt-4">
-          <Link
-            to="/motorista/nova-entrega"
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-500
-               text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
-  >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 4v16m8-8H4" />
-            </svg>
-            Nova Entrega
-          </Link>
+          <p className="text-gray-400 mt-1">Aqui estão suas entregas.</p>
         </div>
 
         {/* Cards de métricas */}
@@ -230,8 +208,7 @@ export default function MotoristaDashboard() {
             entregas.map((entrega) => (
               <div
                 key={entrega.id}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-5
-                           hover:border-gray-700 transition"
+                className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -240,27 +217,20 @@ export default function MotoristaDashboard() {
                       <StatusBadge status={entrega.status} />
                     </div>
 
-                    {/* Rota com seta */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
-                        <span className="text-white font-medium">{entrega.origem}</span>
-                      </div>
-                      <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
-                      <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
-                        <span className="text-white font-medium">{entrega.destino}</span>
-                      </div>
+                    <div className="flex flex-col gap-1 text-sm">
+                      <p className="text-gray-400">
+                        📅 Envio: <span className="text-white">{entrega.dataEnvio || '—'}</span>
+                      </p>
+                      <p className="text-gray-400">
+                        📦 Entrega: <span className="text-white">{entrega.dataEntrega || '—'}</span>
+                      </p>
+                      <p className="text-gray-400">
+                        🏢 Operador ID: <span className="text-white">#{entrega.operadorId}</span>
+                      </p>
                     </div>
-
-                    <p className="text-gray-500 text-xs mt-2">📅 {entrega.data}</p>
                   </div>
 
-                  {/* Botão de atualizar status */}
+                  {/* Botão atualizar status */}
                   {entrega.status !== 'ENTREGUE' && (
                     <button
                       onClick={() => setEntregaSelecionada(entrega)}
@@ -278,7 +248,7 @@ export default function MotoristaDashboard() {
         </div>
       </main>
 
-      {/* Modal de atualização de status */}
+      {/* Modal */}
       {entregaSelecionada && (
         <ModalStatus
           entrega={entregaSelecionada}
@@ -286,7 +256,6 @@ export default function MotoristaDashboard() {
           onAtualizar={handleAtualizarStatus}
         />
       )}
-
     </div>
   );
 }
