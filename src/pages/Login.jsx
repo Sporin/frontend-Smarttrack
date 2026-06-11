@@ -7,20 +7,16 @@ export default function Login() {
   const navigate  = useNavigate();
   const { login } = useAuth();
 
-  // Campos do formulário
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-
-  // Estados de controle
-  const [erro,      setErro]      = useState('');    // mensagem de erro
-  const [carregando, setCarregando] = useState(false); // botão desabilitado durante o login
-  const [mostrarSenha, setMostrarSenha] = useState(false); // mostrar/ocultar senha
+  const [erro,      setErro]      = useState('');
+  const [carregando, setCarregando] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   async function handleLogin(e) {
-    e.preventDefault(); // impede a página de recarregar
+    e.preventDefault();
     setErro('');
 
-    // Validação básica
     if (!email || !senha) {
       setErro('Preencha todos os campos.');
       return;
@@ -36,13 +32,13 @@ export default function Login() {
 
     try {
       setCarregando(true);
-      const user = await login(email, senha); // chama o AuthContext
+      const user = await login(email, senha);
 
-      // Redireciona para o dashboard correto conforme o papel do usuário
+      // ✅ Corrigido: roles agora batem exatamente com os do authService.js
       const rotas = {
-        GESTOR_LOGISTICA:        '/dashboard/gestor',
-        MOTORISTA:               '/dashboard/motorista',
-        OPERADOR_ADMINISTRATIVO: '/dashboard/operador',
+        GESTOR:    '/dashboard/gestor',
+        MOTORISTA: '/dashboard/motorista',
+        OPERADOR:  '/dashboard/operador',
       };
       navigate(rotas[user.role] || '/login');
 
@@ -53,7 +49,6 @@ export default function Login() {
     }
   }
 
-  // Preenche os campos automaticamente ao clicar nas credenciais de teste
   function preencherTeste(emailTeste, senhaTeste) {
     setEmail(emailTeste);
     setSenha(senhaTeste);
@@ -74,15 +69,14 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-white">SmartTrack</h1>
           <p className="text-gray-400 mt-1">Faça login para continuar</p>
         </div>
+
         {/* Card do formulário */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
           <form onSubmit={handleLogin} className="space-y-5">
 
             {/* Campo Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                E-mail
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">E-mail</label>
               <input
                 type="email"
                 value={email}
@@ -97,9 +91,7 @@ export default function Login() {
 
             {/* Campo Senha */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Senha
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Senha</label>
               <div className="relative">
                 <input
                   type={mostrarSenha ? 'text' : 'password'}
@@ -111,7 +103,6 @@ export default function Login() {
                              rounded-lg px-4 py-3 pr-12 focus:outline-none focus:border-blue-500
                              focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50"
                 />
-                {/* Botão mostrar/ocultar senha */}
                 <button
                   type="button"
                   onClick={() => setMostrarSenha(!mostrarSenha)}
@@ -178,7 +169,7 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Credenciais de teste — visível só em desenvolvimento */}
+        {/* Credenciais de teste */}
         {process.env.REACT_APP_USE_MOCK === 'true' && (
           <div className="mt-6 bg-gray-900 border border-gray-700 rounded-2xl p-5">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -186,15 +177,13 @@ export default function Login() {
             </p>
             <div className="space-y-2">
               {[
-                { label: 'Gestor',   email: 'gestor@puc.com',    senha: '123456', cor: 'blue'   },
                 { label: 'Motorista', email: 'motorista@puc.com', senha: '123456', cor: 'green'  },
-                { label: 'Operador', email: 'operador@puc.com',   senha: '123456', cor: 'purple' },
+                { label: 'Operador',  email: 'operador@puc.com',  senha: '123456', cor: 'purple' },
               ].map((u) => (
                 <button
                   key={u.email}
                   onClick={() => preencherTeste(u.email, u.senha)}
-                  className={`w-full text-left px-3 py-2 rounded-lg bg-gray-800
-                    hover:bg-gray-700 transition text-sm`}
+                  className="w-full text-left px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-sm"
                 >
                   <span className={`font-medium text-${u.cor}-400`}>{u.label}</span>
                   <span className="text-gray-400 ml-2">{u.email}</span>

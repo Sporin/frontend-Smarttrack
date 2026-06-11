@@ -3,8 +3,8 @@ import { createApi } from './api';
 
 const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
 
-// Login sempre vai para o driver-service (:8082)
-const api = createApi('http://localhost:8082/driver-service');
+// ✅ Corrigido: removido '/driver-service' da URL
+const api = createApi('http://localhost:8082');
 
 const MOCK_USERS = [
   { id: 1, nome: 'Ana Gestora',     email: 'gestor@puc.com',    senha: '123456', role: 'GESTOR'    },
@@ -13,9 +13,6 @@ const MOCK_USERS = [
 ];
 
 export const authService = {
-  // POST /auth/login
-  // Envia: { email, senha }
-  // Recebe: { token, role, nome, id }
   async login(email, senha) {
     if (USE_MOCK) {
       await new Promise((r) => setTimeout(r, 500));
@@ -27,20 +24,16 @@ export const authService = {
       return { token: 'mock-jwt-token-' + user.role, user };
     }
 
-    // Chama o backend real
     const response = await api.post('/auth/login', { email, senha });
     const data = response.data;
 
-    // Adapta o formato do backend para o formato usado no frontend
-    // Backend retorna: { token, role, nome, id }
-    // Frontend usa: { token, user: { id, nome, role, email } }
     return {
       token: data.token,
       user: {
         id:    data.id,
         nome:  data.nome,
         role:  data.role,
-        email: email, // o backend não retorna o email, então usamos o que foi digitado
+        email: email,
       },
     };
   },
