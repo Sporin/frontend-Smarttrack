@@ -27,16 +27,25 @@ export function AuthProvider({ children }) {
 
   // Função de login — chamada pela tela de Login
   async function login(email, senha) {
-    const data = await authService.login(email, senha);
+    try {
+      const data = await authService.login(email, senha);
 
-    // Salva no navegador para persistir após recarregar a página
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
 
-    setToken(data.token);
-    setUser(data.user);
+      setToken(data.token);
+      setUser(data.user);
 
-    return data.user; // retorna o user para o Login.jsx saber para onde redirecionar
+      return data.user;
+    } catch (err) {
+      // Trata erros do backend (400, 401, 500)
+      const mensagem =
+        err.response?.data?.message ||
+        err.response?.data ||
+        err.message ||
+        'Erro ao fazer login. Tente novamente.';
+      throw new Error(mensagem);
+    }
   }
 
   // Função de logout — limpa tudo

@@ -3,15 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
-import NovaEntrega from './pages/motorista/NovaEntrega';
-import Acompanhamento from './pages/gestor/Acompanhamento';
 
-// Importando as páginas reais
-import Login    from './pages/Login';
-import Register from './pages/Register';
+import Login          from './pages/Login';
+import Register       from './pages/Register';
 import GestorDashboard    from './pages/dashboards/GestorDashboard';
 import MotoristaDashboard from './pages/dashboards/MotoristaDashboard';
 import OperadorDashboard  from './pages/dashboards/OperadorDashboard';
+import NovaEntrega    from './pages/motorista/NovaEntrega';
+import Acompanhamento from './pages/gestor/Acompanhamento';
 
 function AppRoutes() {
   const { isAuthenticated, user } = useAuth();
@@ -19,9 +18,9 @@ function AppRoutes() {
   function RootRedirect() {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     const rotas = {
-      GESTOR_LOGISTICA:        '/dashboard/gestor',
-      MOTORISTA:               '/dashboard/motorista',
-      OPERADOR_ADMINISTRATIVO: '/dashboard/operador',
+      GESTOR:    '/dashboard/gestor',
+      MOTORISTA: '/dashboard/motorista',
+      OPERADOR:  '/dashboard/operador',
     };
     return <Navigate to={rotas[user?.role] || '/login'} replace />;
   }
@@ -33,14 +32,8 @@ function AppRoutes() {
       <Route path="/cadastro" element={<Register />} />
 
       <Route path="/dashboard/gestor" element={
-        <PrivateRoute roles={['GESTOR_LOGISTICA']}>
+        <PrivateRoute roles={['GESTOR']}>
           <GestorDashboard />
-        </PrivateRoute>
-      }/>
-
-      <Route path="/gestor/acompanhamento" element={
-        <PrivateRoute roles={['GESTOR_LOGISTICA']}>
-          <Acompanhamento />
         </PrivateRoute>
       }/>
 
@@ -50,15 +43,21 @@ function AppRoutes() {
         </PrivateRoute>
       }/>
 
+      <Route path="/dashboard/operador" element={
+        <PrivateRoute roles={['OPERADOR']}>
+          <OperadorDashboard />
+        </PrivateRoute>
+      }/>
+
       <Route path="/motorista/nova-entrega" element={
         <PrivateRoute roles={['MOTORISTA']}>
           <NovaEntrega />
         </PrivateRoute>
       }/>
 
-      <Route path="/dashboard/operador" element={
-        <PrivateRoute roles={['OPERADOR_ADMINISTRATIVO']}>
-          <OperadorDashboard />
+      <Route path="/gestor/acompanhamento" element={
+        <PrivateRoute roles={['GESTOR']}>
+          <Acompanhamento />
         </PrivateRoute>
       }/>
 
