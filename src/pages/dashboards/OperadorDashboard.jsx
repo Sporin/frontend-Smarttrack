@@ -1,6 +1,5 @@
 // src/pages/dashboards/OperadorDashboard.jsx
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { deliveryService } from "../../services/deliveryService";
 import { driverService } from "../../services/driverService";
@@ -19,19 +18,32 @@ function badgeStatus(status) {
 export default function OperadorDashboard() {
   const { user, logout } = useAuth();
 
-  const [entregas, setEntregas]         = useState([]);
-  const [motoristas, setMotoristas]     = useState([]);
-  const [motoristaId, setMotoristaId] = useState('');
-  const [notificacoes, setNotificacoes] = useState([]);
-  const [carregando, setCarregando]     = useState(true);
+  const [entregas,      setEntregas]      = useState([]);
+  const [motoristas,    setMotoristas]    = useState([]);
+  const [notificacoes,  setNotificacoes]  = useState([]);
+  const [carregando,    setCarregando]    = useState(true);
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
 
-  const [dataEnvio, setDataEnvio] = useState('');
-  const [enviando, setEnviando]   = useState(false);
-  const [sucesso, setSucesso]     = useState(false);
-  const [erroForm, setErroForm]   = useState('');
+  const [motoristaId, setMotoristaId] = useState('');
+  const [dataEnvio,   setDataEnvio]   = useState('');
+  const [enviando,    setEnviando]    = useState(false);
+  const [sucesso,     setSucesso]     = useState(false);
+  const [erroForm,    setErroForm]    = useState('');
 
   const [filtroStatus, setFiltroStatus] = useState('TODOS');
 
+  // ── Carrega entregas (reutilizado no polling) ──
+  const carregarEntregas = useCallback(async () => {
+    try {
+      const res = await deliveryService.listarEntregas();
+      setEntregas(res);
+      setUltimaAtualizacao(new Date().toLocaleTimeString('pt-BR'));
+    } catch (err) {
+      console.error('Erro ao atualizar entregas:', err);
+    }
+  }, []);
+
+  // ── Carregamento inicial ──
   useEffect(() => {
     async function carregarDados() {
       try {
@@ -41,11 +53,11 @@ export default function OperadorDashboard() {
         ]);
         setEntregas(resEntregas);
         setMotoristas(resMotoristas);
+        setUltimaAtualizacao(new Date().toLocaleTimeString('pt-BR'));
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
       }
 
-      // Notificações separadas para não bloquear o resto
       try {
         const resNotif = await notificationService.listarNotificacoes();
         setNotificacoes(resNotif.filter((n) => !n.lida));
@@ -57,6 +69,12 @@ export default function OperadorDashboard() {
     }
     carregarDados();
   }, []);
+
+  // ── Polling: atualiza entregas a cada 30s ──
+  useEffect(() => {
+    const intervalo = setInterval(carregarEntregas, 30000);
+    return () => clearInterval(intervalo); // limpa ao sair da tela
+  }, [carregarEntregas]);
 
   async function handleCriarEntrega(e) {
     e.preventDefault();
@@ -72,8 +90,8 @@ export default function OperadorDashboard() {
       setEnviando(true);
       const criada = await deliveryService.criarEntrega({
         motoristaId: Number(motoristaId),
-        operadorId: user?.id,
-        dataEnvio: dataEnvio || new Date().toISOString().split('T')[0],
+        operadorId:  user?.id,
+        dataEnvio:   dataEnvio || new Date().toISOString().split('T')[0],
       });
       setEntregas((prev) => [criada, ...prev]);
       setMotoristaId('');
@@ -105,6 +123,7 @@ export default function OperadorDashboard() {
   const entregues     = entregas.filter((e) => e.status === 'ENTREGUE').length;
   const emTransito    = entregas.filter((e) => e.status === 'EM_TRANSITO').length;
   const pendentes     = entregas.filter((e) => e.status === 'PENDENTE').length;
+  const cancelados    = entregas.filter((e) => e.status === 'CANCELADO').length;
 
   if (carregando) {
     return (
@@ -130,15 +149,15 @@ export default function OperadorDashboard() {
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
 
-        {/* SEÇÃO 1 — MÉTRICAS */}
+        {/* ══ SEÇÃO 1 — MÉTRICAS ══ */}
         <section>
           <h2 className="text-lg font-semibold text-gray-200 mb-4">Visão Geral</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Total de Entregas', valor: totalEntregas, cor: 'text-white'        },
-              { label: 'Entregues',         valor: entregues,     cor: 'text-green-400'    },
-              { label: 'Em Trânsito',       valor: emTransito,    cor: 'text-blue-400'     },
-              { label: 'Pendentes',         valor: pendentes,     cor: 'text-yellow-400'   },
+              { label: 'Total de Entregas', valor: totalEntregas, cor: 'text-white'      },
+              { label: 'Entregues',         valor: entregues,     cor: 'text-green-400'  },
+              { label: 'Em Trânsito',       valor: emTransito,    cor: 'text-blue-400'   },
+              { label: 'Pendentes',         valor: pendentes,     cor: 'text-yellow-400' },
             ].map((card) => (
               <div key={card.label} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <p className="text-sm text-gray-400">{card.label}</p>
@@ -148,11 +167,10 @@ export default function OperadorDashboard() {
           </div>
         </section>
 
-        {/* SEÇÃO 2 — CADASTRAR ENTREGA */}
+        {/* ══ SEÇÃO 2 — PUBLICAR ENTREGA ══ */}
         <section>
           <h2 className="text-lg font-semibold text-gray-200 mb-4">Publicar Nova Entrega</h2>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-
             {sucesso && (
               <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-sm">
                 ✅ Entrega publicada com sucesso!
@@ -163,10 +181,7 @@ export default function OperadorDashboard() {
                 ⚠️ {erroForm}
               </div>
             )}
-
             <form onSubmit={handleCriarEntrega} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-
-              {/* Motorista */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-400">
                   Motorista <span className="text-red-400">*</span>
@@ -186,7 +201,6 @@ export default function OperadorDashboard() {
                 </select>
               </div>
 
-              {/* Data de envio */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-400">
                   Data de envio
@@ -198,39 +212,52 @@ export default function OperadorDashboard() {
                   onChange={(e) => setDataEnvio(e.target.value)}
                   disabled={enviando}
                   className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white
-                            focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+                             focus:outline-none focus:border-blue-500 [color-scheme:dark]"
                 />
               </div>
 
-              {/* Botão */}
               <button
                 type="submit"
                 disabled={enviando}
                 className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold
-                          py-2 px-6 rounded-lg transition-colors text-sm"
+                           py-2 px-6 rounded-lg transition-colors text-sm"
               >
                 {enviando ? 'Publicando...' : 'Publicar Entrega'}
               </button>
-
             </form>
           </div>
         </section>
 
-        {/* SEÇÃO 3 — RELATÓRIO DE ENTREGAS */}
+        {/* ══ SEÇÃO 3 — MONITORAR ENTREGAS ══ */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-200">Relatório de Entregas</h2>
-            <select
-              value={filtroStatus}
-              onChange={(e) => setFiltroStatus(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="TODOS">Todos</option>
-              <option value="PENDENTE">Pendente</option>
-              <option value="EM_TRANSITO">Em Trânsito</option>
-              <option value="ENTREGUE">Entregue</option>
-              <option value="CANCELADO">Cancelado</option>
-            </select>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-200">Monitorar Entregas</h2>
+              {ultimaAtualizacao && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  🔄 Atualizado às {ultimaAtualizacao} — próxima em 30s
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={carregarEntregas}
+                className="text-xs text-blue-400 hover:text-blue-300 transition"
+              >
+                Atualizar agora
+              </button>
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="TODOS">Todos</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="EM_TRANSITO">Em Trânsito</option>
+                <option value="ENTREGUE">Entregue</option>
+                <option value="CANCELADO">Cancelado</option>
+              </select>
+            </div>
           </div>
 
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -253,10 +280,7 @@ export default function OperadorDashboard() {
                   </tr>
                 ) : (
                   entregasFiltradas.map((entrega) => (
-                    <tr
-                      key={entrega.id}
-                      className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                    >
+                    <tr key={entrega.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                       <td className="px-4 py-3 text-gray-400">#{entrega.id}</td>
                       <td className="px-4 py-3 text-white">{entrega.dataEnvio || '—'}</td>
                       <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.dataEntrega || '—'}</td>
@@ -276,25 +300,77 @@ export default function OperadorDashboard() {
           </div>
         </section>
 
-        {/* SEÇÃO 4 — MOTORISTAS */}
+        {/* ══ SEÇÃO 4 — RELATÓRIO ══ */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Motoristas Cadastrados</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {motoristas.length === 0 ? (
-              <p className="text-gray-500 col-span-3">Nenhum motorista encontrado.</p>
-            ) : (
-              motoristas.map((m) => (
-                <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-2">
-                  <p className="font-semibold text-white">{m.nome}</p>
-                  <p className="text-sm text-gray-400">🚚 {m.veiculo}</p>
-                  <p className="text-sm text-gray-500">ID: {m.id}</p>
-                </div>
-              ))
-            )}
+          <h2 className="text-lg font-semibold text-gray-200 mb-4">Relatório</h2>
+
+          {/* Cards com totais */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Pendentes',   valor: pendentes,     cor: 'text-yellow-400', bg: 'border-yellow-500/20' },
+              { label: 'Em Trânsito', valor: emTransito,    cor: 'text-blue-400',   bg: 'border-blue-500/20'   },
+              { label: 'Entregues',   valor: entregues,     cor: 'text-green-400',  bg: 'border-green-500/20'  },
+              { label: 'Cancelados',  valor: cancelados,    cor: 'text-red-400',    bg: 'border-red-500/20'    },
+            ].map((card) => (
+              <div key={card.label} className={`bg-gray-900 border ${card.bg} rounded-xl p-5`}>
+                <p className="text-sm text-gray-400">{card.label}</p>
+                <p className={`text-3xl font-bold mt-1 ${card.cor}`}>{card.valor}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {totalEntregas > 0 ? Math.round((card.valor / totalEntregas) * 100) : 0}% do total
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Lista detalhada */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-800">
+              <p className="text-sm text-gray-400">Lista detalhada de todas as entregas</p>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 text-gray-400 text-left">
+                  <th className="px-4 py-3 font-medium">ID</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Data Envio</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Data Entrega</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Motorista ID</th>
+                  <th className="px-4 py-3 font-medium hidden md:table-cell">Operador ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entregas.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      Nenhuma entrega cadastrada.
+                    </td>
+                  </tr>
+                ) : (
+                  entregas.map((entrega) => (
+                    <tr key={entrega.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                      <td className="px-4 py-3 text-gray-400">#{entrega.id}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeStatus(entrega.status)}`}>
+                          {entrega.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.dataEnvio || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">{entrega.dataEntrega || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
+                        {entrega.motoristaId ? `#${entrega.motoristaId}` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 hidden md:table-cell">
+                        {entrega.operadorId ? `#${entrega.operadorId}` : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        {/* SEÇÃO 5 — NOTIFICAÇÕES */}
+        {/* ══ SEÇÃO 5 — NOTIFICAÇÕES ══ */}
         <section>
           <h2 className="text-lg font-semibold text-gray-200 mb-4">
             Notificações
@@ -304,7 +380,6 @@ export default function OperadorDashboard() {
               </span>
             )}
           </h2>
-
           {notificacoes.length === 0 ? (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center text-gray-500">
               Nenhuma notificação pendente. ✅

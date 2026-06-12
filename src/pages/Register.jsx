@@ -79,7 +79,6 @@ export default function Register() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white">Criar Conta</h1>
-          <p className="text-gray-400 mt-1">Sistema de Logística — PUC-SP</p>
         </div>
 
         {/* Card */}
