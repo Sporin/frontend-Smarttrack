@@ -1,70 +1,125 @@
-# Getting Started with Create React App
+# SmartTrack - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend do SmartTrack, um sistema web de logística de transporte que desenvolvi como projeto acadêmico na PUC-SP. O sistema foi pensado a partir de um levantamento de requisitos feito com a BJ Transportes, uma empresa de logística que precisava controlar melhor as entregas, os motoristas e os operadores responsáveis por elas.
 
-## Available Scripts
+Este repositório tem só o frontend. O backend foi desenvolvido pelo Luiz Fernando em um repositório separado, em Java com Spring Boot, e o frontend se comunica com ele por uma API REST.
 
-In the project directory, you can run:
+## Funcionalidades
 
-### `npm start`
+O sistema tem dois tipos de usuário.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+O operador de logística pode:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- publicar novas entregas, escolhendo o motorista responsável e a data de envio
+- consultar e monitorar o status de todas as entregas (a lista atualiza sozinha a cada 30 segundos)
+- filtrar as entregas por status
+- ver um relatório com o total de entregas por status e a lista detalhada
+- ver as notificações geradas pelas entregas
 
-### `npm test`
+O motorista pode:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- ver as entregas atribuídas a ele
+- atualizar o status de cada entrega (pendente, em trânsito ou entregue)
 
-### `npm run build`
+Também tem uma tela de cadastro, onde a pessoa escolhe se vai entrar como motorista ou operador.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Os status possíveis de uma entrega são PENDENTE, EM_TRANSITO, ENTREGUE e CANCELADO.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Tecnologias
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- React 19 (Create React App)
+- React Router 7
+- Tailwind CSS 3
+- Axios
 
-### `npm run eject`
+## Como funciona a comunicação com o backend
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+O backend do Luiz é dividido em quatro microserviços, e cada um roda em uma porta. Cada arquivo em `src/services` conversa com um deles:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+| Arquivo                  | Serviço              | Endereço                                       |
+|--------------------------|----------------------|------------------------------------------------|
+| authService.js           | driver-service       | http://localhost:8082/driver-service           |
+| driverService.js         | driver-service       | http://localhost:8082/driver-service           |
+| deliveryService.js       | delivery-service     | http://localhost:8081/delivery-service         |
+| operatorService.js       | operator-service     | http://localhost:8083                          |
+| notificationService.js   | notification-service | http://localhost:8084/notification-service     |
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Os endereços estão escritos direto nesses arquivos. Se o backend mudar de porta ou de caminho, é neles que precisa alterar.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+O arquivo `src/services/api.js` cria uma instância do Axios para cada serviço. Antes de cada requisição ele pega o token JWT salvo no localStorage e coloca no cabeçalho `Authorization`. Se o backend responder 401, ele apaga o token e manda o usuário de volta para o login.
 
-## Learn More
+O login sempre passa pelo driver-service, mesmo para operadores. A resposta vem no formato `{ token, role, nome, id }`, e o `authService` transforma isso em `{ token, user: { id, nome, role, email } }`, que é o formato usado no resto do frontend. O controle de quem está logado fica no `AuthContext`, e o `PrivateRoute` impede que um motorista abra a tela do operador e vice-versa.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Como rodar
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Pré-requisitos
 
-### Code Splitting
+- Node.js e npm
+- O backend rodando localmente, se for usar dados reais (as instruções de como rodar o backend ficam no repositório dele)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Passos
 
-### Analyzing the Bundle Size
+Clone o repositório e instale as dependências:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```
+git clone https://github.com/Sporin/frontend-Smarttrack.git
+cd frontend-Smarttrack
+npm install
+```
 
-### Making a Progressive Web App
+O `.env` não vai para o GitHub, então é preciso criar ele na raiz do projeto:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```env
+REACT_APP_USE_MOCK=false
+```
 
-### Advanced Configuration
+Depois é só iniciar:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```
+npm start
+```
 
-### Deployment
+O projeto abre em `http://localhost:3000`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Modo mock
 
-### `npm run build` fails to minify
+Se quiser testar só o frontend, sem o backend ligado, coloque `REACT_APP_USE_MOCK=true` no `.env` e reinicie o `npm start`. Nesse modo os services devolvem dados fictícios e a tela de login mostra usuários de teste (todos com a senha 123456):
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- motorista@puc.com
+- operador@puc.com
+
+## Estrutura de pastas
+
+```
+src/
+  App.js                       rotas da aplicação
+  contexts/AuthContext.jsx     login, logout e usuário logado
+  components/PrivateRoute.jsx  proteção das rotas por tipo de usuário
+  pages/
+    Login.jsx
+    Register.jsx               cadastro de motorista e operador
+    dashboards/
+      MotoristaDashboard.jsx
+      OperadorDashboard.jsx
+  services/
+    api.js                     configuração do Axios e envio do token
+    authService.js
+    deliveryService.js
+    driverService.js
+    operatorService.js
+    notificationService.js
+```
+
+## Problemas que tive ao integrar com o backend
+
+Deixei anotado aqui porque pode acontecer de novo com quem for rodar o projeto.
+
+- Erro de CORS no login: o `CorsConfig` do backend não bastava com o Spring Security ativo. O Luiz e eu resolvemos configurando o CORS direto no `SecurityConfig` do driver-service e do operator-service.
+- Erro 404 nas chamadas: alguns serviços usam context path e outros não. O driver-service e o delivery-service precisam do nome do serviço na URL, e o operator-service não.
+- Os roles precisam bater exatamente com o que o backend manda (MOTORISTA e OPERADOR). No começo o frontend esperava nomes diferentes e só o login de motorista funcionava.
+- A criação de entrega precisa mandar `motoristaId`, `operadorId` e `dataEnvio`. O backend não tem campos de origem e destino, então tirei eles das telas.
+
+## Observações
+
+- A listagem de notificações ainda retorna 404 no notification-service, então essa seção do painel do operador aparece vazia por enquanto. Marcar uma notificação como lida só funciona no frontend, porque o backend ainda não tem esse endpoint.
+- Ainda existem no código algumas telas da primeira versão (GestorDashboard, Acompanhamento e NovaEntrega) que não são mais usadas, já que o sistema final ficou só com motorista e operador.
